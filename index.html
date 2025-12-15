@@ -201,11 +201,25 @@ iframe{
             </a>
         </div>
 
+        <div class="menu-item" onclick="openPage('dashboard.html')" data-page="dashboard.html">
+            <img src="https://cdn-icons-png.flaticon.com/512/1828/1828884.png">
+            <span class="label">Dashboard</span>
+        </div>
+
+        <div class="menu-item" onclick="openPage('anexos.html')" data-page="anexos.html">
+            <img src="https://cdn-icons-png.flaticon.com/512/2985/2985150.png">
+            <span class="label">Anexos ComprasNet</span>
+        </div>
+
 <div class="menu-item" onclick="toggleSub('sub_cadastrar')">
     <img src="https://cdn-icons-png.flaticon.com/512/992/992651.png">
     <span class="label">Cadastrar</span>
 </div>
 
+<div class="submenu" id="sub_cadastrar">
+    <a onclick="openPage('documentos.html')" data-page="documentos.html">
+      <span class="label">Documentos</span>
+    </a>
 
     <a onclick="openPage('cadastroempresas.html')" data-page="cadastroempresas.html">
       <span class="label">Empresas e fornecedores</span>
@@ -247,6 +261,22 @@ iframe{
            <a onclick="openPage('fornecedor.html')" data-page="fornecedor.html">
               <span class="label">Painel do fornecedor</span>
             </a>
+        </div>
+
+        <div class="menu-item" onclick="toggleSub('sub_dados')">
+            <img src="https://cdn-icons-png.flaticon.com/512/1828/1828805.png">
+            <span class="label">Visão de Dados</span>
+        </div>
+
+        <div class="submenu" id="sub_dados">
+            <a onclick="openPage('visao-dados.html')" data-page="visao-dados.html">
+              <span class="label">Análises</span>
+            </a>
+        </div>
+
+        <div class="menu-item" onclick="openPage('configuracoes.html')" data-page="configuracoes.html">
+            <img src="https://cdn-icons-png.flaticon.com/512/3524/3524659.png">
+            <span class="label">Configurações</span>
         </div>
 
     </div>
