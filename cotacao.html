@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Gerar Cotações • LICITAR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --p:#0b1e39;
+  --bg:#f4f6fb;
+  --card:#fff;
+  --border:#d7dbea;
+  --hover:#f0f3fa;
+  --ok:#2e7d32;
+  --warn:#c62828;
+}
+*{box-sizing:border-box;font-family:Inter}
+body{margin:0;background:var(--bg);padding:16px;font-size:13px;color:#222}
+
+h1{margin:0 0 10px;font-size:18px;color:var(--p)}
+input{width:100%;padding:8px;border-radius:6px;border:1px solid var(--border)}
+
+.layout{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:10px;
+}
+
+.item-card{
+  border:1px solid var(--border);
+  padding:8px;
+  border-radius:6px;
+  cursor:pointer;
+}
+.item-card:hover{background:var(--hover)}
+
+.status{
+  font-weight:700;
+  font-size:12px;
+}
+.ativa{color:var(--ok)}
+.finalizada{color:var(--warn)}
+
+.btn{
+  background:var(--p);
+  color:white;
+  border:none;
+  padding:7px 12px;
+  border-radius:6px;
+  font-weight:600;
+  cursor:pointer;
+}
+.btn.sm{padding:4px 8px;font-size:12px}
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  display:none;
+  justify-content:center;
+  align-items:flex-start;
+  padding-top:20px;
+  z-index:1000;
+}
+
+.box{
+  background:white;
+  width:96%;
+  max-width:1100px;
+  max-height:88vh;
+  border-radius:10px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.header{
+  position:sticky;
+  top:0;
+  background:white;
+  padding:10px;
+  border-bottom:1px solid var(--border);
+  z-index:10;
+}
+
+.body{padding:10px;overflow:auto}
+
+.item{
+  display:grid;
+  grid-template-columns:22px 1fr;
+  gap:8px;
+  padding:6px;
+  border-bottom:1px solid #eee;
+  cursor:pointer;
+}
+.item:hover{background:var(--hover)}
+
+.close{
+  position:absolute;
+  right:14px;
+  top:10px;
+  font-size:18px;
+  cursor:pointer;
+}
+
+#overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.85);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  font-size:16px;
+  font-weight:600;
+  color:var(--p);
+  z-index:2000;
+}
+
+.status{
+  font-weight:700;
+  font-size:12px;
+  padding:2px 6px;
+  border-radius:4px;
+  display:inline-block;
+}
+.ativa{
+  color:#fff;
+  background:#2e7d32;
+}
+.finalizada{
+  color:#fff;
+  background:#c62828;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Gerar e Gerenciar Cotações</h1>
+
+<div class="layout">
+
+<!-- ================= ESQUERDA ================= -->
+<div class="card">
+  <h1>Nova Cotação</h1>
+  <input id="buscaLic" placeholder="Pesquisar licitação..." oninput="filtrarLic()">
+  <div class="grid" id="listaLic"></div>
+</div>
+
+<!-- ================= DIREITA ================= -->
+<div class="card">
+  <h1>Cotações Criadas</h1>
+  <div id="listaCotacoes"></div>
+</div>
+
+</div>
+
+<!-- ================= MODAL ITENS ================= -->
+<div class="modal" id="modalItens">
+  <div class="box">
+    <div class="header">
+      <b id="tituloLic"></b><br>
+      <small id="empresaLic"></small>
+      <div class="close" onclick="fecharItens()">✕</div>
+      <input id="buscaItem" placeholder="Pesquisar item..." oninput="filtrarItens()" style="margin-top:6px">
+    </div>
+    <div class="body" id="listaItens"></div>
+    <div style="padding:10px;text-align:right">
+      <button class="btn" onclick="abrirFor()">Selecionar Fornecedores</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL FORNECEDORES ================= -->
+<div class="modal" id="modalFor">
+  <div class="box">
+    <div class="header">
+      <b>Selecionar Fornecedores</b>
+      <div class="close" onclick="fecharFor()">✕</div>
+      <input id="buscaFor" placeholder="Pesquisar fornecedor..." oninput="filtrarFor()" style="margin-top:6px">
+    </div>
+    <div class="body" id="listaFor"></div>
+    <div style="padding:10px;text-align:right">
+      <button class="btn" onclick="confirmarEnvio()">Confirmar Envio</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay">Processando…</div>
+
+<script>
+const sb = supabase.createClient(
+  "https://mblvyircwsaxaslklzky.supabase.co",
+  "sb_publishable_oN2CuBzXHaUF7NHYS_M7aw_tBqVeD-x"
+);
+
+let licCache=[], itemCache=[], cotCache=[], forCache=[];
+let licId=null;
+let itensSel=new Set(), forSel=new Set();
+
+/* ================= LICITAÇÕES ================= */
+async function carregarLic(){
+  const {data} = await sb
+    .from("licitacoes")
+    .select("id,codigo,empresas(nome)")
+    .order("id",{ascending:false});
+  licCache=data||[];
+  renderLic(licCache);
+}
+
+function renderLic(arr){
+  listaLic.innerHTML="";
+  arr.forEach(l=>{
+    listaLic.innerHTML+=`
+      <div class="item-card" ondblclick="abrirItens(${l.id},'${l.codigo}','${l.empresas?.nome||""}')">
+        <b>${l.codigo}</b><br>
+        <small>${l.empresas?.nome||""}</small>
+      </div>`;
+  });
+}
+
+function filtrarLic(){
+  let t=buscaLic.value.toLowerCase();
+  renderLic(licCache.filter(l =>
+    l.codigo.toLowerCase().includes(t) ||
+    (l.empresas?.nome||"").toLowerCase().includes(t)
+  ));
+}
+
+/* ================= ITENS ================= */
+async function abrirItens(id,cod,emp){
+  licId=id;
+  itensSel.clear();
+  tituloLic.innerText=`Licitação ${cod}`;
+  empresaLic.innerText=`Empresa Licitante: ${emp}`;
+  modalItens.style.display="flex";
+
+  const {data} = await sb
+    .from("licitacoes_itens")
+    .select("id,item_tr,especificacao,quant_min,quant_max,valor_unit")
+    .eq("licitacao_id",id);
+
+  itemCache=data||[];
+  renderItens(itemCache);
+}
+
+function renderItens(arr){
+  listaItens.innerHTML="";
+  arr.forEach(i=>{
+    listaItens.innerHTML+=`
+      <div class="item" ondblclick="toggleItem(${i.id})">
+        <input type="checkbox" ${itensSel.has(i.id)?"checked":""}
+          onclick="event.stopPropagation();toggleItem(${i.id})">
+        <div>
+          <b>${i.item_tr}</b><br>
+          <small>${i.especificacao}</small><br>
+          <small>Min ${i.quant_min} | Máx ${i.quant_max} | Ref ${i.valor_unit ?? "-"}</small>
+        </div>
+      </div>`;
+  });
+}
+
+function toggleItem(id){
+  itensSel.has(id) ? itensSel.delete(id) : itensSel.add(id);
+  renderItens(itemCache);
+}
+
+function filtrarItens(){
+  let t=buscaItem.value.toLowerCase();
+  renderItens(itemCache.filter(i =>
+    i.item_tr.toLowerCase().includes(t) ||
+    i.especificacao.toLowerCase().includes(t)
+  ));
+}
+
+function fecharItens(){modalItens.style.display="none"}
+
+/* ================= FORNECEDORES ================= */
+async function abrirFor(){
+  modalFor.style.display="flex";
+  listaFor.innerHTML="";
+  forSel.clear();
+
+  const {data} = await sb
+    .from("empresas")
+    .select("id,nome")
+    .in("tipo",["fornecedor","ambas"]);
+
+  forCache=data||[];
+}
+
+function filtrarFor(){
+  let t=buscaFor.value.toLowerCase();
+  listaFor.innerHTML="";
+  if(t.length<2) return;
+
+  forCache.filter(f=>f.nome.toLowerCase().includes(t))
+    .forEach(f=>{
+      listaFor.innerHTML+=`
+        <div class="item" ondblclick="toggleFor(${f.id})">
+          <input type="checkbox" ${forSel.has(f.id)?"checked":""}
+            onclick="event.stopPropagation();toggleFor(${f.id})">
+          <div>${f.nome}</div>
+        </div>`;
+    });
+}
+
+function toggleFor(id){
+  forSel.has(id) ? forSel.delete(id) : forSel.add(id);
+  filtrarFor();
+}
+
+function fecharFor(){modalFor.style.display="none"}
+
+/* ================= ENVIO ================= */
+async function confirmarEnvio() {
+  if (!itensSel.size || !forSel.size) {
+    alert("Selecione itens e fornecedores");
+    return;
+  }
+
+  overlay.style.display = "flex";
+
+  try {
+    for (let fornecedorId of forSel) {
+
+      /* ==============================
+         1️⃣ VERIFICA SE JÁ EXISTE COTAÇÃO
+      ============================== */
+      const { data: existente, error: checkError } = await sb
+        .from("cotacoes")
+        .select("id")
+        .eq("licitacao_id", licId)
+        .eq("fornecedor_id", fornecedorId)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      let cotacaoId;
+
+      /* ==============================
+         2️⃣ SE NÃO EXISTE, CRIA
+      ============================== */
+      if (!existente) {
+        const { error: insertError } = await sb
+          .from("cotacoes")
+          .insert({
+            licitacao_id: licId,
+            fornecedor_id: fornecedorId,
+            status: "ativa"
+          });
+
+        if (insertError) throw insertError;
+
+        /* busca o ID recém criado */
+        const { data: criada, error: selectError } = await sb
+          .from("cotacoes")
+          .select("id")
+          .eq("licitacao_id", licId)
+          .eq("fornecedor_id", fornecedorId)
+          .order("id", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (selectError || !criada) {
+          throw new Error("Cotação criada, mas ID não localizado");
+        }
+
+        cotacaoId = criada.id;
+
+      } else {
+        cotacaoId = existente.id;
+      }
+
+      /* ==============================
+         3️⃣ INSERE ITENS (SEM DUPLICAR)
+      ============================== */
+      for (let itemId of itensSel) {
+
+        const { data: itemExiste } = await sb
+          .from("cotacoes_itens")
+          .select("id")
+          .eq("cotacao_id", cotacaoId)
+          .eq("item_id", itemId)
+          .maybeSingle();
+
+        if (!itemExiste) {
+          const { error: itemError } = await sb
+            .from("cotacoes_itens")
+            .insert({
+              cotacao_id: cotacaoId,
+              item_id: itemId
+            });
+
+          if (itemError) throw itemError;
+        }
+      }
+    }
+
+    alert("Cotação registrada com sucesso");
+    fecharFor();
+    fecharItens();
+    await carregarCotacoes();
+
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao gerar cotação:\n" + e.message);
+  }
+
+  overlay.style.display = "none";
+}
+
+/* ================= GERENCIAR ================= */
+async function carregarCotacoes(){
+  const {data} = await sb
+    .from("cotacoes")
+    .select("id,status,licitacoes(codigo),empresas(nome)")
+    .order("id",{ascending:false});
+  cotCache=data||[];
+  renderCotacoes();
+}
+
+function renderCotacoes(){
+  listaCotacoes.innerHTML="";
+  cotCache.forEach(c=>{
+    listaCotacoes.innerHTML+=`
+      <div class="item-card">
+        <b>${c.licitacoes?.codigo}</b><br>
+        <small>${c.empresas?.nome}</small><br>
+        <span class="status ${c.status}">${c.status.toUpperCase()}</span><br><br>
+        <button class="btn sm"
+  onclick="this.disabled=true; toggleStatus(${c.id},'${c.status}')">
+
+          ${c.status==="ativa"?"Finalizar":"Reabrir"}
+        </button>
+      </div>`;
+  });
+}
+
+async function toggleStatus(id, st){
+  const novo = st === "ativa" ? "finalizada" : "ativa";
+
+  overlay.style.display = "flex";
+
+  try {
+    const { error } = await sb
+      .from("cotacoes")
+      .update({ status: novo })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    await carregarCotacoes();
+
+    alert(
+      novo === "finalizada"
+        ? "Cotação finalizada com sucesso"
+        : "Cotação reaberta com sucesso"
+    );
+
+  } catch (e) {
+    alert("Erro ao alterar status da cotação:\n" + e.message);
+  }
+
+  overlay.style.display = "none";
+}
+
+
+/* ================= INIT ================= */
+carregarLic();
+carregarCotacoes();
+</script>
+
+</body>
+</html>

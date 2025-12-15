@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Licitações • Painel Premium</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --p:#0b1e39;
+  --p2:#102742;
+  --gold:#e5b754;
+  --bg:#eef2f7;
+  --card:#ffffff;
+  --border:#d6d9e0;
+  --radius:14px;
+  --shadow:0 6px 14px rgba(0,0,0,.08);
+
+  /* POPUP */
+  --popup-bg:#f4f8ff;
+  --popup-header-bg:#e8f0ff;
+  --popup-border:#d5e2ff;
+}
+
+/* =========================================================
+   RESET / BASE
+========================================================= */
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:"Inter";
+}
+
+body{
+  background:var(--bg);
+  padding:25px;
+}
+
+h1{
+  font-size:30px;
+  font-weight:800;
+  color:var(--p);
+  margin-bottom:20px;
+}
+
+/* =========================================================
+   BOTÕES PADRÃO
+========================================================= */
+.btn{
+  padding:11px 22px;
+  border:none;
+  border-radius:var(--radius);
+  background:var(--p);
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+  transition:.2s;
+  font-size:14px;
+}
+
+.btn:hover{ background:var(--p2); }
+
+/* =========================================================
+   TOP BAR
+========================================================= */
+.top-bar-actions{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:22px;
+}
+
+.top-bar-actions input{
+  height:40px;
+  padding:0 14px;
+  background:#fff;
+  border-radius:10px;
+  border:1px solid var(--border);
+  font-size:14px;
+  min-width:180px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.06);
+  transition:.2s;
+}
+
+.top-bar-actions input:focus{
+  border-color:var(--p);
+  box-shadow:0 3px 10px rgba(0,0,0,0.12);
+}
+
+/* Campo principal */
+#filtroPesquisa{
+  min-width:260px !important;
+  padding-left:38px !important;
+  background:#fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23889" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>')
+    no-repeat 12px center;
+  background-size:18px;
+  border-radius:10px;
+}
+
+/* Autocomplete */
+.autocomplete-list{
+  position:absolute;
+  top:68px;
+  left:0;
+  width:100%;
+  background:white;
+  border-radius:12px;
+  border:1px solid var(--border);
+  box-shadow:0 6px 16px rgba(0,0,0,0.12);
+  padding:6px 0;
+  z-index:9999;
+  display:none;
+  max-height:220px;
+  overflow-y:auto;
+}
+
+.autocomplete-item{
+  padding:10px 14px;
+  font-size:14px;
+  cursor:pointer;
+  border-bottom:1px solid #f1f1f1;
+  transition:.2s;
+}
+
+.autocomplete-item:hover{
+  background:#eef3ff;
+  color:var(--p);
+}
+.table-lote thead th{
+  position: sticky;
+  top: 0;
+  background:#e5eeff;
+  color:#0b1e39;
+  padding:10px;
+  font-size:11px;
+  font-weight:700;
+  border-bottom:2px solid #cbd9f5;
+  z-index:20;
+}
+
+
+
+/* =========================================================
+   BOTÃO NOVA LICITAÇÃO
+========================================================= */
+.btn-new{
+  height:40px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 18px;
+  font-size:13px;
+  font-weight:600;
+  background:#0b1e39;
+  color:white;
+  border:none;
+  border-radius:10px;
+  box-shadow:0 3px 6px rgba(0,0,0,0.12);
+  cursor:pointer;
+  transition:.2s;
+}
+
+.btn-new:hover{
+  background:#102742;
+  transform:translateY(-1px);
+}
+
+.btn-new span{
+  background:white;
+  color:#0b1e39;
+  width:20px;
+  height:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:6px;
+  font-weight:900;
+  font-size:15px;
+}
+
+/* =========================================================
+   TABELA LISTAGEM
+========================================================= */
+.table-wrapper{
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+  overflow:hidden;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+thead{
+  background:#f3f6fb;
+}
+
+th{
+  padding:14px;
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  color:#354b6b;
+}
+
+td{
+  padding:12px;
+  border-bottom:1px solid var(--border);
+  font-size:14px;
+}
+
+tbody tr:hover{
+  background:#f8faff;
+  cursor:pointer;
+}
+
+/* Status */
+.badge{
+  padding:6px 12px;
+  font-size:11px;
+  font-weight:700;
+  border-radius:20px;
+  color:white;
+}
+
+.st-PENDENTE{background:#ffbf00;}
+.st-FUTURA{background:#3498ff;}
+.st-EMANDAMENTO{background:#ff7e00;}
+.st-FINALIZADA{background:#00b36b;}
+.st-SUSPENSA{background:#d7263d;}
+
+.status-select{
+  padding:6px;
+  border-radius:10px;
+  border:1px solid var(--border);
+}
+
+/* =========================================================
+   POPUP FULLSCREEN
+========================================================= */
+#popup{
+  position:fixed;
+  inset:0;
+  z-index:300;
+  background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(4px);
+  display:none;
+  justify-content:center;
+  align-items:flex-start;
+  padding:30px;
+}
+
+#popupOverlay{
+  position:absolute;
+  inset:0;
+}
+
+#popupBox{
+  position:relative;
+  background:white;
+  width:100%;
+  max-width:1600px;
+  height:90vh;
+  overflow-y:auto;
+  border-radius:12px;
+  padding:25px 35px;
+  box-shadow:0 8px 25px rgba(0,0,0,0.20);
+  border:2px solid var(--popup-border);
+}
+
+#popupTitulo{
+  font-size:22px;
+  font-weight:800;
+  color:var(--p);
+}
+
+/* =========================================================
+   LOTES
+========================================================= */
+.loteContainer{
+  margin-top:40px;
+  background:var(--popup-bg);
+  border-radius:12px;
+  padding:20px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  border:1px solid var(--popup-border);
+}
+
+.loteContainer:not(:first-child){
+  margin-top:60px;
+  border-top:4px solid #b9d2ff;
+}
+
+/* Cabeçalho do lote - FIXO */
+.loteHeader{
+  position: relative !important;
+  background: var(--popup-bg);
+  padding: 12px 0;
+  border-bottom: 2px solid #d1defa;
+  z-index: 100; /* garantir que fica acima do thead */
+}
+
+.loteHeader h3{
+  margin:0;
+  font-size:16px;
+  font-weight:700;
+  color:var(--p);
+}
+
+/* =========================================================
+   TABELA DO LOTE
+========================================================= */
+.table-scroll{
+  max-height:45vh;
+  overflow-y:auto;
+  border-radius:8px;
+  border:1px solid #cddaf0;
+  background:white;
+  box-shadow:inset 0 0 8px rgba(0,0,0,0.05);
+  margin-top:10px;
+  padding-right:5px;
+}
+
+.table-lote{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  font-size:13px;
+}
+
+
+/* Linhas */
+.table-lote tbody tr:nth-child(odd){background:#fafdff;}
+.table-lote tbody tr:nth-child(even){background:#ffffff;}
+
+.table-lote td{
+  padding:10px;
+  border-bottom:1px solid #e3e9f5;
+}
+
+.table-lote tbody tr:hover{
+  background:#eaf3ff !important;
+}
+
+/* =========================================================
+   MODAL CADASTRO
+========================================================= */
+#modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  display:none;
+  justify-content:center;
+  align-items:flex-start;
+  padding-top:40px;
+  z-index:300;
+}
+
+#modal>div{
+  background:white;
+  width:90%;
+  max-width:900px;
+  border-radius:var(--radius);
+  padding:25px;
+  max-height:90vh;
+  overflow:auto;
+  box-shadow:var(--shadow);
+}
+
+.fields-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+}
+
+#modal input,
+#modal select{
+  width:100%;
+  padding:10px;
+  border-radius:var(--radius);
+  border:1px solid var(--border);
+}
+
+/* =========================================================
+   OVERLAY SALVANDO
+========================================================= */
+#overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.8);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  font-size:22px;
+  color:var(--p);
+  z-index:999;
+}
+
+</style>
+
+</head>
+<body>
+
+<div class="top-bar-actions">
+    <button class="btn-new" onclick="abrirCadastro()">
+        <span>+</span> Nova Licitação
+    </button>
+
+    <input id="filtroPesquisa" placeholder="Pesquisar..." oninput="aplicarFiltros()">
+    <input type="date" id="filtroDataDe" onchange="aplicarFiltros()">
+    <input type="date" id="filtroDataAte" onchange="aplicarFiltros()">
+</div>
+
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Empresa</th>
+        <th>Código</th>
+        <th>Data</th>
+        <th>Modo</th>
+        <th>Critério</th>
+        <th>Valor</th>
+        <th>Status</th>
+        <th>Alterar</th>
+      </tr>
+    </thead>
+    <tbody id="lista"></tbody>
+  </table>
+</div>
+
+
+<!-- POPUP -->
+<div id="popup">
+  
+  <!-- OVERLAY -->
+  <div id="popupOverlay" onclick="fecharPopup()"></div>
+
+  <!-- CAIXA DO POPUP -->
+  <div id="popupBox">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 id="popupTitulo" style="color:var(--p)"></h2>
+
+      <div style="display:flex;gap:10px;">
+        <button class="btn" id="btnEditarItens" onclick="ativarEdicaoItens()">Editar Itens</button>
+        <div class="btn-remove-item" style="font-size:30px;color:#555" onclick="fecharPopup()">×</div>
+      </div>
+    </div>
+
+    <div id="popupLotesContainer"></div>
+
+    <div id="areaSalvarItens" style="display:none;margin-top:20px;text-align:right;">
+      <button class="btn" onclick="salvarAlteracoesItens()">Salvar Alterações</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- MODAL CADASTRO -->
+<div id="modal">
+  <div>
+
+    <h2 style="color:var(--p);margin-bottom:15px">Cadastrar Licitação</h2>
+
+    <div class="fields-grid">
+
+     <div style="position: relative;">
+  <label>Empresa</label>
+  <input id="pesquisaEmpresa" placeholder="Pesquisar..." oninput="filtrarEmpresas()">
+  <div id="listaEmpresas" class="autocomplete-list"></div>
+  <input type="hidden" id="cadEmpresa">
+</div>
+
+
+      <div>
+        <label>Código</label>
+        <input id="cadCodigo">
+      </div>
+
+      <div>
+        <label>Data</label>
+        <input type="date" id="cadData">
+      </div>
+
+      <div>
+        <label>Hora</label>
+        <input type="time" id="cadHora">
+      </div>
+
+      <div>
+        <label>Modo</label>
+        <select id="cadModo">
+          <option>Pregão Eletrônico</option>
+          <option>Pregão Presencial</option>
+          <option>Concorrência</option>
+          <option>Tomada de Preços</option>
+          <option>Dispensa</option>
+          <option>Inexigibilidade</option>
+          <option>Registro de Preços</option>
+          <option>Cotação</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Critério</label>
+        <input id="cadCriterio">
+      </div>
+
+      <div>
+        <label>Valor Total</label>
+        <input id="cadValor" disabled style="background:#eee">
+      </div>
+    </div>
+
+    <h3 style="margin:10px 0;color:var(--p)">Lotes</h3>
+
+    <div id="areaLotes"></div>
+
+    <button class="btn" style="margin:10px 0" onclick="addLote()">+ Adicionar Lote</button>
+
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+      <button class="btn" style="background:#777" onclick="fecharCadastro()">Cancelar</button>
+      <button class="btn" onclick="salvarLic()">Salvar Licitação</button>
+    </div>
+
+  </div>
+</div>
+
+<div id="overlay">Salvando...</div>
+
+
+<script>
+/* ============================================================
+   SUPABASE
+============================================================ */
+const sb = supabase.createClient(
+  "https://mblvyircwsaxaslklzky.supabase.co",
+  "sb_publishable_oN2CuBzXHaUF7NHYS_M7aw_tBqVeD-x"
+);
+
+let listaCache = [];
+let empresasCache = [];
+let popupLotes = [];
+let modoEdicao = false;
+
+/* ============================================================
+   UTIL
+============================================================ */
+function maskMoney(v){
+  return Number(v || 0).toLocaleString("pt-BR",{
+    style:"currency",
+    currency:"BRL"
+  });
+}
+
+function parseMoney(v){
+  if (!v) return 0;
+
+  // Se já é número
+  if (typeof v === "number") return v;
+
+  let t = v.toString().trim();
+
+  // Remove R$
+  t = t.replace("R$","").trim();
+
+  // Caso venha com vírgula brasileira
+  if (t.includes(",") && !t.includes(".")) {
+    // Ex: 12,50 → 12.50
+    return parseFloat(t.replace(",", ".")) || 0;
+  }
+
+  // Caso venha com milhar brasileiro: 12.500,90
+  if (t.includes(".") && t.includes(",")) {
+    // Remove milhar e troca decimal
+    t = t.replace(/\./g, "").replace(",", ".");
+    return parseFloat(t) || 0;
+  }
+
+  // Caso venha como 12.50 (americano)
+  return parseFloat(t) || 0;
+}
+
+
+/* ============================================================
+   CARREGAR EMPRESAS
+============================================================ */
+async function carregarEmpresas(){
+  const {data} = await sb.from("empresas")
+    .select("id,nome")
+    .order("nome",{ascending:true});
+
+  empresasCache = data || [];
+}
+
+/* ============================================================
+   ABRIR MODAL CADASTRO
+============================================================ */
+function abrirCadastro(){
+  cadEmpresa.value = "";
+  pesquisaEmpresa.value = "";
+  cadCodigo.value = "";
+  cadData.value = "";
+  cadHora.value = "";
+  cadModo.value = "Pregão Eletrônico";
+  cadCriterio.value = "";
+  cadValor.value = "R$ 0,00";
+  areaLotes.innerHTML = "";
+
+  modal.style.display = "flex";
+}
+
+function fecharCadastro(){
+  modal.style.display = "none";
+}
+
+function filtrarEmpresas(){
+  let search = pesquisaEmpresa.value.toLowerCase();
+  let r = empresasCache.filter(e => e.nome.toLowerCase().includes(search));
+  if(!search || r.length === 0){
+    listaEmpresas.style.display = "none";
+    return;
+  }
+
+  listaEmpresas.innerHTML = r.map(e => `
+    <div class="autocomplete-item" onclick="selecionarEmpresa('${e.id}','${e.nome.replace(/'/g,"\\'")}')">
+      ${e.nome}
+    </div>
+  `).join("");
+
+  listaEmpresas.style.display = "block";
+}
+
+function selecionarEmpresa(id,nome){
+  cadEmpresa.value = id;
+  pesquisaEmpresa.value = nome;
+  listaEmpresas.style.display = "none";
+}
+
+/* ============================================================
+   LOTES e ITENS
+============================================================ */
+function addLote(){
+  let index = document.querySelectorAll(".loteCard").length;
+
+  areaLotes.innerHTML += `
+    <div class="loteCard" data-l="${index}">
+      <input class="loteNome" placeholder="Nome do lote">
+
+      <div style="display:flex;gap:10px;margin:8px 0;">
+        <button class="btn" style="padding:6px 10px" onclick="addItem(${index})">+ Item</button>
+        <input type="file" onchange="uploadLote(${index},this)">
+      </div>
+
+      <div class="loteItens"></div>
+    </div>
+  `;
+}
+
+function addItem(l){
+  let bloco = document.querySelector(`[data-l="${l}"] .loteItens`);
+  bloco.innerHTML += `
+    <div class="linhaItem">
+      <input placeholder="Item TR">
+      <input placeholder="Descrição">
+      <select>
+        <option>UN</option>
+        <option>KG</option>
+        <option>CX</option>
+        <option>PCT</option>
+      </select>
+      <input type="number" placeholder="Máx">
+      <input type="number" placeholder="Min">
+      <input placeholder="0,00" oninput="atualizarValorTotal()">
+      <div class="btn-remove-item" onclick="this.parentElement.remove(); atualizarValorTotal();">×</div>
+    </div>
+  `;
+}
+
+
+function formatarValorPlanilha(v){
+  if (v === undefined || v === null) return "";
+
+  // Se vier número, mantém exatamente a quantidade de casas do Excel
+  if (typeof v === "number") {
+    return String(v).includes('.') ? v.toString() : v.toFixed(2);
+  }
+
+  // Se vier como string, apenas retorna do jeito que está
+  return v.toString();
+}
+
+
+function uploadLote(l,input){
+  let file = input.files[0];
+  let reader = new FileReader();
+
+  reader.onload = e => {
+    let wb = XLSX.read(e.target.result,{type:"binary"});
+    let bloco = document.querySelector(`[data-l="${l}"] .loteItens`);
+    bloco.innerHTML = "";
+
+    wb.SheetNames.forEach(nome => {
+      let linhas = XLSX.utils.sheet_to_json(wb.Sheets[nome]);
+
+      linhas.forEach(r => {
+        bloco.innerHTML += `
+          <div class="linhaItem">
+            <input value="${r.item_tr||""}">
+            <input value="${r.especificacao||""}">
+            <select>
+              <option ${r.unidade=="UN"?"selected":""}>UN</option>
+              <option ${r.unidade=="KG"?"selected":""}>KG</option>
+              <option ${r.unidade=="CX"?"selected":""}>CX</option>
+              <option ${r.unidade=="LATA/CAIXA/SACHÊ"?"selected":""}>LATA/CAIXA/SACHÊ</option>
+              <option ${r.unidade=="SACHÊ"?"selected":""}>SACHÊ</option>
+              <option ${r.unidade=="FRASCO"?"selected":""}>FRASCO</option>
+              <option ${r.unidade=="L"?"selected":""}>L</option>
+              <option ${r.unidade=="POTE"?"selected":""}>POTE</option>
+              <option ${r.unidade=="PCT"?"selected":""}>PCT</option>
+            </select>
+            <input value="${r.quant_max||0}">
+            <input value="${r.quant_min||0}">
+            <input value="${formatarValorPlanilha(r.valor_unit)}" oninput="atualizarValorTotal()">
+            <div class="btn-remove-item" onclick="this.parentElement.remove(); atualizarValorTotal();">×</div>
+          </div>
+        `;
+      });
+    });
+
+    atualizarValorTotal();
+  };
+
+  reader.readAsBinaryString(file);
+}
+
+function atualizarValorTotal(){
+  let total = 0;
+  document.querySelectorAll(".linhaItem").forEach(l => {
+    let max = Number(l.children[3].value || 0);
+    let valor = parseMoney(l.children[5].value || 0);
+    total += max * valor;
+  });
+  cadValor.value = maskMoney(total);
+}
+
+/* ============================================================
+   SALVAR LICITAÇÃO
+============================================================ */
+async function salvarLic(){
+  if(!cadEmpresa.value) return alert("Selecione a empresa!");
+  if(!cadCodigo.value) return alert("Informe o código!");
+  if(!cadData.value) return alert("Informe a data!");
+
+  overlay.style.display="flex";
+
+  let respLic = await sb.from("licitacoes")
+    .insert([{
+      empresa_id: cadEmpresa.value,
+      codigo: cadCodigo.value,
+      data_sessao: cadData.value,
+      hora_sessao: cadHora.value,
+      modo: cadModo.value,
+      criterio: cadCriterio.value,
+      valor: parseMoney(cadValor.value),
+      status: "PENDENTE"
+    }])
+    .select()
+    .single();
+
+  if(respLic.error){
+    overlay.style.display="none";
+    return alert("Erro ao salvar licitação:\n" + respLic.error.message);
+  }
+
+  let lic_id = respLic.data.id;
+
+  /* SALVAR LOTES */
+  let lotes = document.querySelectorAll(".loteCard");
+
+  for(let lote of lotes){
+    let nomeLote = lote.querySelector(".loteNome").value.trim();
+    if(!nomeLote){
+      overlay.style.display="none";
+      return alert("Um lote está sem nome!");
+    }
+
+    let respLote = await sb.from("licitacoes_lotes")
+      .insert([{licitacao_id: lic_id, nome:nomeLote}])
+      .select()
+      .single();
+
+    if(respLote.error){
+      overlay.style.display="none";
+      return alert("Erro ao salvar lote:\n" + respLote.error.message);
+    }
+
+    let lote_id = respLote.data.id;
+
+    /* SALVAR ITENS */
+    let itens = lote.querySelectorAll(".linhaItem");
+
+    for(let item of itens){
+      let c = item.querySelectorAll("input,select");
+
+      let obj = {
+        licitacao_id: lic_id,
+        lote_id: lote_id,
+        item_tr: c[0].value,
+        especificacao: c[1].value,
+        unidade: c[2].value,
+        quant_max: Number(c[3].value||0),
+        quant_min: Number(c[4].value||0),
+        valor_unit: parseMoney(c[5].value)
+      };
+
+      await sb.from("licitacoes_itens").insert([obj]);
+    }
+  }
+
+  modal.style.display="none";
+  carregar();
+  overlay.style.display="none";
+  alert("Licitação salva com sucesso!");
+}
+
+/* ============================================================
+   CARREGAR LISTA
+============================================================ */
+async function carregar(){
+  lista.innerHTML = `
+    <tr><td colspan="8" style="text-align:center;padding:18px">Carregando...</td></tr>
+  `;
+
+  const {data} = await sb.from("licitacoes")
+    .select(`
+      id, codigo, data_sessao, hora_sessao, modo, criterio, valor, status,
+      empresa:empresa_id(id,nome)
+    `)
+    .order("id",{ascending:false});
+
+  listaCache = data || [];
+  aplicarFiltros();
+}
+
+function aplicarFiltros(){
+  let txt = filtroPesquisa.value.toLowerCase();
+  let de = filtroDataDe.value;
+  let ate = filtroDataAte.value;
+
+  let arr = listaCache.filter(l => {
+    let ok = true;
+
+    if(txt){
+      ok &= (l.empresa?.nome || "").toLowerCase().includes(txt)
+         || l.codigo.toLowerCase().includes(txt)
+         || l.modo.toLowerCase().includes(txt);
+    }
+
+    if(de) ok &= l.data_sessao >= de;
+    if(ate) ok &= l.data_sessao <= ate;
+
+    return ok;
+  });
+
+  renderTabela(arr);
+}
+
+function renderTabela(arr){
+  lista.innerHTML = "";
+
+  arr.forEach(l => {
+    let tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${l.empresa?.nome || "-"}</td>
+      <td>${l.codigo}</td>
+      <td>${l.data_sessao} ${l.hora_sessao||""}</td>
+      <td>${l.modo}</td>
+      <td>${l.criterio}</td>
+      <td>${maskMoney(l.valor)}</td>
+      <td><span class="badge st-${l.status.replace(/\s/g,"").toUpperCase()}">${l.status}</span></td>
+      <td>
+        <select class="status-select" onchange="mudarStatus(${l.id}, this.value)">
+          <option ${l.status=="PENDENTE"?"selected":""}>PENDENTE</option>
+          <option ${l.status=="FUTURA"?"selected":""}>FUTURA</option>
+          <option ${l.status=="EM ANDAMENTO"?"selected":""}>EM ANDAMENTO</option>
+          <option ${l.status=="FINALIZADA"?"selected":""}>FINALIZADA</option>
+          <option ${l.status=="SUSPENSA"?"selected":""}>SUSPENSA</option>
+        </select>
+      </td>
+    `;
+
+    tr.addEventListener("click", e=>{
+      if(e.target.tagName!="SELECT") abrirPopup(l);
+    });
+
+    lista.appendChild(tr);
+  });
+}
+
+/* ============================================================
+   STATUS
+============================================================ */
+async function mudarStatus(id,novo){
+  await sb.from("licitacoes")
+    .update({status:novo})
+    .eq("id",id);
+
+  carregar();
+}
+
+
+
+function calcularTotalLote(lote){
+  let total = 0;
+  lote.itens.forEach(it => {
+    total += Number(it.quant_max || 0) * Number(it.valor_unit || 0);
+  });
+  return total;
+}
+function calcularTotalGeral(){
+  let total = 0;
+  popupLotes.forEach(l => {
+    total += calcularTotalLote(l);
+  });
+  return total;
+}
+
+/* ============================================================
+   POPUP
+============================================================ */
+function abrirPopup(l){
+  popupTitulo.innerText = `${l.empresa?.nome} • ${l.codigo} • ${l.modo}`;
+  popup.style.display="flex";
+  document.body.classList.add("no-scroll"); // impedir scroll
+  carregarPopupItens(l.id);
+}
+
+
+function fecharPopup(){
+  popup.style.display="none";
+  document.body.classList.remove("no-scroll"); // liberar scroll
+}
+
+
+async function carregarPopupItens(id){
+  const {data:lotes} = await sb
+    .from("licitacoes_lotes")
+    .select("*")
+    .eq("licitacao_id",id);
+
+  const {data:itens} = await sb
+    .from("licitacoes_itens")
+    .select("*")
+    .eq("licitacao_id",id);
+
+  popupLotes = lotes.map(l => ({
+    id: l.id,
+    nome: l.nome,
+    itens: itens.filter(i=>i.lote_id==l.id)
+  }));
+
+  renderPopup(false);
+}
+
+function renderPopup(edit){
+  popupLotesContainer.innerHTML = "";
+
+  let totalGeral = maskMoney(calcularTotalGeral());
+  popupLotesContainer.innerHTML += `
+    <h2 style="color:#0b1e39;margin-top:10px;margin-bottom:15px;">
+      TOTAL GERAL: ${totalGeral}
+    </h2>
+  `;
+
+  popupLotes.forEach((l, L) => {
+    let totalLote = maskMoney(calcularTotalLote(l));
+
+    let header = `
+      <div class="loteContainer">
+        <div class="loteHeader">
+          <h3>${l.nome} — <span style="color:#0b1e39;font-weight:700;">Total: ${totalLote}</span></h3>
+        </div>
+
+        <div class="table-scroll">
+          <table class="table-lote">
+            <thead>
+              <tr>
+                <th>Item TR</th>
+                <th>Descrição</th>
+                <th>Un.</th>
+                <th>Máx</th>
+                <th>Mín</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let linhas = "";
+
+    l.itens.forEach((it, I) => {
+      linhas += `
+        <tr>
+          <td>${edit ? `<input data-l='${L}' data-i='${I}' data-c='item_tr' value="${it.item_tr}">` : it.item_tr}</td>
+          <td>${edit ? `<input data-l='${L}' data-i='${I}' data-c='especificacao' value="${it.especificacao}">` : it.especificacao}</td>
+          <td>${edit ? `
+            <select data-l='${L}' data-i='${I}' data-c='unidade'>
+              <option ${it.unidade=="UN"?"selected":""}>UN</option>
+              <option ${it.unidade=="KG"?"selected":""}>KG</option>
+              <option ${it.unidade=="CX"?"selected":""}>CX</option>
+              <option ${it.unidade=="PCT"?"selected":""}>PCT</option>
+            </select>
+          ` : it.unidade}</td>
+          <td>${edit ? `<input type="number" data-l='${L}' data-i='${I}' data-c='quant_max' value="${it.quant_max}">` : it.quant_max}</td>
+          <td>${edit ? `<input type="number" data-l='${L}' data-i='${I}' data-c='quant_min' value="${it.quant_min}">` : it.quant_min}</td>
+          <td>${edit ? `<input data-l='${L}' data-i='${I}' data-c='valor_unit' value="${maskMoney(it.valor_unit)}">` : maskMoney(it.valor_unit)}</td>
+        </tr>
+      `;
+    });
+
+    let fechamento = `
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    popupLotesContainer.innerHTML += header + linhas + fechamento;
+  });
+}
+
+
+
+function ativarEdicaoItens(){
+  modoEdicao = !modoEdicao;
+  renderPopup(modoEdicao);
+
+  areaSalvarItens.style.display = modoEdicao ? "block" : "none";
+  btnEditarItens.innerText = modoEdicao ? "Cancelar" : "Editar Itens";
+}
+
+async function salvarAlteracoesItens(){
+  overlay.style.display="flex";
+
+  for(let L in popupLotes){
+    for(let I in popupLotes[L].itens){
+
+      let f = c => document.querySelector(`[data-l='${L}'][data-i='${I}'][data-c='${c}']`);
+
+      let it = popupLotes[L].itens[I];
+
+      it.item_tr = f("item_tr").value;
+      it.especificacao = f("especificacao").value;
+      it.unidade = f("unidade").value;
+      it.quant_max = Number(f("quant_max").value);
+      it.quant_min = Number(f("quant_min").value);
+      it.valor_unit = parseMoney(f("valor_unit").value);
+
+      await sb.from("licitacoes_itens")
+        .update({
+          item_tr: it.item_tr,
+          especificacao: it.especificacao,
+          unidade: it.unidade,
+          quant_max: it.quant_max,
+          quant_min: it.quant_min,
+          valor_unit: it.valor_unit
+        })
+        .eq("id",it.id);
+    }
+  }
+
+  overlay.style.display="none";
+  ativarEdicaoItens();
+  alert("Itens atualizados!");
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+carregarEmpresas();
+carregar();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Resultado da Cotação • LICITAR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --p:#0b1e39;
+  --bg:#f4f6fb;
+  --card:#fff;
+  --border:#d7dbea;
+  --ok:#2e7d32;
+  --warn:#c62828;
+  --gray:#f1f3f6;
+}
+
+*{box-sizing:border-box;font-family:Inter}
+
+body{
+  margin:0;
+  background:var(--bg);
+  padding:20px;
+  color:#222;
+}
+
+h1{margin-bottom:16px;color:var(--p)}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:16px;
+}
+
+.header{
+  position:sticky;
+  top:0;
+  background:#fff;
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  margin-bottom:16px;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:16px;
+  z-index:10;
+}
+
+.total{
+  font-size:20px;
+  font-weight:700;
+  color:var(--ok);
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+
+th,td{
+  border-bottom:1px solid var(--border);
+  padding:8px;
+  text-align:center;
+}
+
+th{
+  background:#f7f9fc;
+  font-weight:600;
+}
+
+td:first-child,th:first-child{
+  text-align:left;
+}
+
+select,input{
+  padding:6px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  font-size:12px;
+}
+
+.pendente{
+  background:var(--gray);
+  color:#777;
+}
+
+.menor{
+  color:var(--ok);
+  font-weight:700;
+}
+
+.footer{
+  position:sticky;
+  bottom:0;
+  background:#fff;
+  padding:14px;
+  border-top:1px solid var(--border);
+  text-align:right;
+}
+
+.btn{
+  background:var(--p);
+  color:#fff;
+  border:none;
+  padding:10px 18px;
+  border-radius:10px;
+  font-weight:600;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Resultado da Cotação</h1>
+
+<div class="card">
+  <b>Selecionar Cotação Finalizada</b><br><br>
+  <select id="filtroCotacao" onchange="carregarResultado()"></select>
+</div>
+
+<div class="header">
+  <div>
+    <b>Empresa</b><br>
+    <span id="empresa"></span>
+  </div>
+  <div>
+    <b>Código</b><br>
+    <span id="codigo"></span>
+  </div>
+  <div>
+    <b>Total Estimado</b><br>
+    <span class="total" id="totalGeral">R$ 0,00</span>
+  </div>
+</div>
+
+<div class="card">
+  <table id="tabela"></table>
+</div>
+
+<div class="footer">
+  <button class="btn" onclick="gerarOrdem()">Gerar Ordem de Compra</button>
+</div>
+
+<script>
+const sb = supabase.createClient(
+  "https://mblvyircwsaxaslklzky.supabase.co",
+  "sb_publishable_oN2CuBzXHaUF7NHYS_M7aw_tBqVeD-x"
+);
+
+let cotacaoAtual = null;
+let totalAtual = 0;
+
+/* ===== INIT ===== */
+carregarFiltro();
+
+/* ===== FILTRO ===== */
+async function carregarFiltro(){
+  const {data} = await sb.from("cotacoes")
+    .select("id, licitacao:licitacao_id(codigo, empresa:empresa_id(nome))")
+    .eq("status","finalizada");
+
+  filtroCotacao.innerHTML="";
+  data.forEach(c=>{
+    let nome = c.licitacao.empresa.nome.split(" ").slice(0,3).join(" ");
+    filtroCotacao.innerHTML += `<option value="${c.id}">${nome}</option>`;
+  });
+
+  carregarResultado();
+}
+
+/* ===== RESULTADO ===== */
+async function carregarResultado(){
+  const cotacaoId = filtroCotacao.value;
+
+  const {data} = await sb.rpc("resultado_cotacao_completo",{
+    p_cotacao_id: cotacaoId
+  });
+
+  cotacaoAtual = data?.[0] || null;
+  montarTabela(data || []);
+}
+
+/* ===== TABELA ===== */
+function montarTabela(linhas){
+  let html = `
+    <tr>
+      <th>Item</th>
+      <th>Qtd Min</th>
+      <th>Fornecedor</th>
+      <th>Marca</th>
+      <th>Valor Cotado</th>
+      <th>Valor Final</th>
+    </tr>
+  `;
+
+  totalAtual = 0;
+
+  linhas.forEach(l=>{
+    let pendente = !l.cotacao_item_id;
+    let valorBase = l.valor_unit !== null ? Number(l.valor_unit) : null;
+
+    if(valorBase !== null){
+      totalAtual += valorBase * l.quant_min;
+    }
+
+    html += `
+      <tr class="${pendente?'pendente':''}">
+        <td><b>${l.item_tr}</b><br>${l.especificacao}</td>
+        <td>${l.quant_min}</td>
+        <td>${l.fornecedor_nome || "—"}</td>
+        <td>${l.marca || "-"}</td>
+        <td class="${!pendente?'menor':''}">
+          ${valorBase !== null
+            ? valorBase.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})
+            : "-"
+          }
+        </td>
+        <td>
+          ${valorBase !== null
+            ? (valorBase * l.quant_min).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})
+            : "-"
+          }
+        </td>
+      </tr>
+    `;
+  });
+
+  tabela.innerHTML = html;
+  totalGeral.innerText = totalAtual.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+
+  if(linhas.length){
+    empresa.innerText = linhas[0].empresa_nome || "";
+    codigo.innerText = linhas[0].codigo || "";
+  }
+}
+
+/* ===== ORDEM DE COMPRA ===== */
+async function gerarOrdem(){
+  if(!cotacaoAtual){
+    alert("Nenhuma cotação selecionada");
+    return;
+  }
+
+  const {error} = await sb.from("ordens_compra").insert({
+    licitacao_id: cotacaoAtual.licitacao_id,
+    empresa_nome: cotacaoAtual.empresa_nome,
+    total_estimado: totalAtual
+  });
+
+  if(error){
+    alert("Erro ao gerar ordem");
+    console.error(error);
+  }else{
+    alert("Ordem de compra registrada com sucesso");
+  }
+}
+</script>
+
+</body>
+</html>

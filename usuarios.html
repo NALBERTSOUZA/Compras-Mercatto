@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Controle de Usuários</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{
+  box-sizing:border-box;
+  font-family:Inter, sans-serif;
+}
+
+body{
+  margin:0;
+  display:flex;
+  height:100vh;
+  background:linear-gradient(135deg,#f4f7fc,#e9f0ff);
+  overflow:hidden;
+}
+
+/* ===== LEFT (CADASTRO) ===== */
+.left{
+  width:42%;
+  background:#ffffff;
+  padding:70px 70px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.left h2{
+  color:#102a43;
+  font-size:26px;
+  margin-bottom:30px;
+  font-weight:700;
+}
+
+.group{
+  margin-bottom:22px;
+}
+
+label{
+  display:block;
+  font-size:14px;
+  color:#5a6c86;
+  margin-bottom:6px;
+}
+
+input{
+  width:100%;
+  padding:14px 16px;
+  font-size:15px;
+  border-radius:10px;
+  border:1px solid #d8e0ef;
+  background:#f7faff;
+  transition:.25s;
+}
+
+input:focus{
+  outline:none;
+  border-color:#4c6ef5;
+  box-shadow:0 0 0 3px rgba(76,110,245,.15);
+}
+
+.btn{
+  margin-top:10px;
+  padding:15px;
+  font-size:16px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(135deg,#4c6ef5,#364fc7);
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+  transition:.25s;
+}
+
+.btn:hover{
+  opacity:.92;
+}
+
+/* Loading */
+.btn.loading{
+  pointer-events:none;
+  opacity:.7;
+}
+.btn.loading::after{
+  content:"Salvando...";
+  position:absolute;
+  inset:0;
+  background:rgba(54,79,199,.85);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+}
+
+/* ===== RIGHT (LISTA) ===== */
+.right{
+  width:58%;
+  padding:50px;
+  background:linear-gradient(180deg,#102a43,#0b1e39);
+  overflow-y:auto;
+}
+
+.right h2{
+  color:#ffffff;
+  font-size:24px;
+  margin-bottom:20px;
+}
+
+/* CARD LISTA */
+.userList{
+  background:white;
+  border-radius:16px;
+  box-shadow:0 20px 40px rgba(0,0,0,.15);
+  overflow:hidden;
+}
+
+.userRow{
+  padding:18px 24px;
+  border-bottom:1px solid #eef2f8;
+}
+
+.userRow:last-child{
+  border-bottom:none;
+}
+
+.userRow b{
+  display:block;
+  font-size:15px;
+  color:#102a43;
+}
+
+.userRow span{
+  font-size:13px;
+  color:#6b7c93;
+}
+</style>
+</head>
+
+<body>
+
+<script>
+const emailLogado = localStorage.getItem("usuarioEmail");
+if(!emailLogado){ window.location.href = "login.html"; }
+</script>
+
+<!-- LEFT -->
+<div class="left">
+  <h2>Novo Usuário</h2>
+
+  <div class="group">
+    <label>Nome completo</label>
+    <input id="u_nome" type="text">
+  </div>
+
+  <div class="group">
+    <label>Email</label>
+    <input id="u_email" type="email">
+  </div>
+
+  <div class="group">
+    <label>Senha</label>
+    <input id="u_senha" type="password">
+  </div>
+
+  <button id="btnSalvar" class="btn" onclick="salvarUsuario()">
+    Cadastrar Usuário
+  </button>
+</div>
+
+<!-- RIGHT -->
+<div class="right">
+  <h2>Usuários Cadastrados</h2>
+  <div id="listaUsuarios" class="userList"></div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+const sb = supabase.createClient(
+  "https://mblvyircwsaxaslklzky.supabase.co",
+  "sb_publishable_oN2CuBzXHaUF7NHYS_M7aw_tBqVeD-x"
+);
+
+/* LISTAR */
+async function carregarUsuarios(){
+  const { data, error } = await sb
+    .from("usuarios")
+    .select("*")
+    .order("nome");
+
+  if(error){
+    alert("Erro ao carregar usuários");
+    return;
+  }
+
+  listaUsuarios.innerHTML = data.map(u => `
+    <div class="userRow">
+      <b>${u.nome}</b>
+      <span>${u.email}</span>
+    </div>
+  `).join("");
+}
+
+/* CADASTRAR */
+window.salvarUsuario = async function(){
+  const btn = document.getElementById("btnSalvar");
+  btn.classList.add("loading");
+
+  const nome = u_nome.value.trim();
+  const email = u_email.value.trim();
+  const senha = u_senha.value.trim();
+
+  if(!nome || !email || !senha){
+    alert("Preencha todos os campos");
+    btn.classList.remove("loading");
+    return;
+  }
+
+  await sb.from("usuarios").insert([{ nome, email, senha }]);
+
+  u_nome.value = "";
+  u_email.value = "";
+  u_senha.value = "";
+
+  btn.classList.remove("loading");
+  carregarUsuarios();
+};
+
+carregarUsuarios();
+});
+</script>
+
+</body>
+</html>
